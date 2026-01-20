@@ -211,6 +211,63 @@ const defaultSettings = {
   googleCalendarPersonal: '',
   googleCalendarColumbia: '',
   calendarEmbedUrl: '',
+  githubGistId: '',
+  githubToken: '',
+  lastSyncTime: null,
+  autoSync: false,
+};
+
+// GitHub Gist API helpers
+const GistSync = {
+  async save(token, gistId, data) {
+    const url = gistId
+      ? `https://api.github.com/gists/${gistId}`
+      : 'https://api.github.com/gists';
+
+    const response = await fetch(url, {
+      method: gistId ? 'PATCH' : 'POST',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        description: 'Life Tracker Data Backup',
+        public: false,
+        files: {
+          'life-tracker-data.json': {
+            content: JSON.stringify(data, null, 2)
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async load(token, gistId) {
+    const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: {
+        'Authorization': `token ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const gist = await response.json();
+    const content = gist.files['life-tracker-data.json']?.content;
+
+    if (!content) {
+      throw new Error('No data file found in gist');
+    }
+
+    return JSON.parse(content);
+  }
 };
 
 // Application Status Options
@@ -1503,6 +1560,30 @@ const Icons = {
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
     </svg>
   ),
+  Cloud: () => (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+    </svg>
+  ),
+  Download: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  ),
+  Refresh: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="23 4 23 10 17 10"/>
+      <polyline points="1 20 1 14 7 14"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+  ),
+  GitHub: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+    </svg>
+  ),
 };
 
 // Modal Component
@@ -2095,12 +2176,15 @@ const RemindersPage = ({ reminders, onAdd, onComplete, onDelete }) => {
 };
 
 // Settings Page
-const SettingsPage = ({ settings, onUpdateSettings, courses, onImportSyllabus }) => {
+const SettingsPage = ({ settings, onUpdateSettings, courses, onImportSyllabus, allData, onRestoreData }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [syllabusText, setSyllabusText] = useState('');
+  const [syllabusUrl, setSyllabusUrl] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(courses[0]?.id || '');
   const [importedItems, setImportedItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [syncStatus, setSyncStatus] = useState('');
+  const [syncError, setSyncError] = useState('');
 
   const handleParseSyllabus = () => {
     if (!syllabusText.trim() || !selectedCourse) return;
@@ -2127,16 +2211,118 @@ const SettingsPage = ({ settings, onUpdateSettings, courses, onImportSyllabus })
     setSelectedItems(newSelected);
   };
 
+  // Export data as JSON file
+  const handleExportData = () => {
+    const exportData = {
+      ...allData,
+      exportedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `life-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import data from JSON file
+  const handleImportData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.courses && data.items && data.applications && data.reminders) {
+          if (confirm('This will replace all your current data. Are you sure?')) {
+            onRestoreData(data);
+            setSyncStatus('Data imported successfully!');
+            setTimeout(() => setSyncStatus(''), 3000);
+          }
+        } else {
+          setSyncError('Invalid backup file format');
+          setTimeout(() => setSyncError(''), 3000);
+        }
+      } catch (err) {
+        setSyncError('Failed to parse backup file');
+        setTimeout(() => setSyncError(''), 3000);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // GitHub Gist sync
+  const handleSyncToGist = async () => {
+    if (!settings.githubToken) {
+      setSyncError('Please enter your GitHub Personal Access Token');
+      return;
+    }
+
+    setSyncStatus('Syncing to GitHub...');
+    setSyncError('');
+
+    try {
+      const result = await GistSync.save(settings.githubToken, settings.githubGistId, allData);
+      if (!settings.githubGistId) {
+        onUpdateSettings({ githubGistId: result.id });
+      }
+      onUpdateSettings({ lastSyncTime: new Date().toISOString() });
+      setSyncStatus('Synced successfully!');
+      setTimeout(() => setSyncStatus(''), 3000);
+    } catch (err) {
+      setSyncError(`Sync failed: ${err.message}`);
+    }
+  };
+
+  const handleLoadFromGist = async () => {
+    if (!settings.githubToken || !settings.githubGistId) {
+      setSyncError('Please enter your GitHub token and Gist ID');
+      return;
+    }
+
+    setSyncStatus('Loading from GitHub...');
+    setSyncError('');
+
+    try {
+      const data = await GistSync.load(settings.githubToken, settings.githubGistId);
+      if (confirm('This will replace all your current data. Are you sure?')) {
+        onRestoreData(data);
+        setSyncStatus('Data loaded successfully!');
+        setTimeout(() => setSyncStatus(''), 3000);
+      } else {
+        setSyncStatus('');
+      }
+    } catch (err) {
+      setSyncError(`Load failed: ${err.message}`);
+    }
+  };
+
+  // Convert Google Drive share link to direct view/download
+  const getGoogleDriveViewUrl = (url) => {
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) {
+      return `https://drive.google.com/file/d/${match[1]}/preview`;
+    }
+    return url;
+  };
+
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">Settings & Imports</h1>
-        <p className="page-subtitle">Configure your dashboard and import syllabi</p>
+        <p className="page-subtitle">Configure your dashboard, sync data, and import syllabi</p>
       </div>
 
       <div className="tabs">
         <button className={`tab ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>General</button>
         <button className={`tab ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>Calendar</button>
+        <button className={`tab ${activeTab === 'sync' ? 'active' : ''}`} onClick={() => setActiveTab('sync')}>Data Sync</button>
         <button className={`tab ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}>Syllabus Import</button>
       </div>
 
@@ -2245,19 +2431,150 @@ const SettingsPage = ({ settings, onUpdateSettings, courses, onImportSyllabus })
         </div>
       )}
 
+      {activeTab === 'sync' && (
+        <div>
+          {syncStatus && <div className="alert alert-success">{syncStatus}</div>}
+          {syncError && <div className="alert alert-warning">{syncError}</div>}
+
+          <div className="card">
+            <div className="settings-section">
+              <h3 className="settings-title">Export / Import Data</h3>
+              <p className="settings-description">
+                Download your data as a JSON file to back up or transfer to another device.
+                You can also import a previously exported backup file.
+              </p>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" onClick={handleExportData}>
+                  <Icons.Download /> Export Data
+                </button>
+                <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+                  <Icons.Upload /> Import Data
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportData}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="settings-section">
+              <h3 className="settings-title">GitHub Gist Sync</h3>
+              <p className="settings-description">
+                Sync your data across devices using a private GitHub Gist. Your data is stored securely
+                in your GitHub account and can be accessed from any device.
+              </p>
+
+              <div className="alert alert-info">
+                <strong>Setup:</strong> Create a Personal Access Token at{' '}
+                <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                  github.com/settings/tokens
+                </a>{' '}
+                with the <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>gist</code> scope.
+              </p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">GitHub Personal Access Token</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  value={settings.githubToken}
+                  onChange={e => onUpdateSettings({ githubToken: e.target.value })}
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                />
+                <p className="form-help">Your token is stored locally and never sent anywhere except GitHub's API.</p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Gist ID (auto-generated on first sync)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={settings.githubGistId}
+                  onChange={e => onUpdateSettings({ githubGistId: e.target.value })}
+                  placeholder="Will be created automatically"
+                />
+                <p className="form-help">Leave blank for first sync. A new private gist will be created.</p>
+              </div>
+
+              {settings.lastSyncTime && (
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Last synced: {new Date(settings.lastSyncTime).toLocaleString()}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" onClick={handleSyncToGist} disabled={!settings.githubToken}>
+                  <Icons.Cloud /> Push to GitHub
+                </button>
+                <button className="btn btn-secondary" onClick={handleLoadFromGist} disabled={!settings.githubToken || !settings.githubGistId}>
+                  <Icons.Refresh /> Pull from GitHub
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="settings-section">
+              <h3 className="settings-title">Deployment Info</h3>
+              <p className="settings-description">
+                This app runs entirely in your browser. Your data is stored in localStorage by default.
+                To access from multiple devices, use the GitHub Gist sync above or export/import your data.
+              </p>
+
+              <div className="alert alert-info">
+                <strong>GitHub Pages:</strong> This app can be deployed to GitHub Pages for free.
+                Just push to your repo and enable Pages in repository settings.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'syllabus' && (
         <div className="card">
           <div className="settings-section">
             <h3 className="settings-title">Import Syllabus</h3>
             <p className="settings-description">
-              Paste your syllabus text below. The system will attempt to extract assignments with dates.
-              Review and approve the extracted items before they're added to your assignments.
+              Paste your syllabus text below, or provide a Google Drive link to view it.
+              The system will attempt to extract assignments with dates.
             </p>
 
             <div className="alert alert-warning">
               <strong>Tip:</strong> For best results, copy the assignment schedule section of your syllabus.
               The parser looks for date patterns (Sep 12, 9/12) near assignment keywords (Problem Set, Quiz, Midterm, etc.).
             </div>
+
+            <div className="form-group">
+              <label className="form-label">Google Drive Syllabus Link (optional)</label>
+              <input
+                type="url"
+                className="form-input"
+                value={syllabusUrl}
+                onChange={e => setSyllabusUrl(e.target.value)}
+                placeholder="https://drive.google.com/file/d/..."
+              />
+              <p className="form-help">Paste a Google Drive share link to view your syllabus PDF. Make sure sharing is enabled.</p>
+            </div>
+
+            {syllabusUrl && (
+              <div style={{ marginBottom: '24px' }}>
+                <h4 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--text-primary)' }}>Syllabus Preview</h4>
+                <div className="calendar-embed-container" style={{ height: '400px' }}>
+                  <iframe
+                    src={getGoogleDriveViewUrl(syllabusUrl)}
+                    style={{ border: 0, width: '100%', height: '100%' }}
+                    allow="autoplay"
+                    title="Syllabus Preview"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Select Course</label>
@@ -2271,7 +2588,7 @@ const SettingsPage = ({ settings, onUpdateSettings, courses, onImportSyllabus })
             </div>
 
             <div className="form-group">
-              <label className="form-label">Syllabus Text</label>
+              <label className="form-label">Syllabus Text (copy from PDF or type manually)</label>
               <textarea
                 className="form-textarea"
                 value={syllabusText}
@@ -2489,6 +2806,26 @@ function LifeTracker() {
     setItems(prev => [...prev, ...itemsToAdd]);
   };
 
+  // Get all data for export/sync
+  const getAllData = () => ({
+    courses,
+    items,
+    applications,
+    reminders,
+    calendarEvents,
+    settings
+  });
+
+  // Restore data from backup/sync
+  const restoreData = (data) => {
+    if (data.courses) setCourses(data.courses);
+    if (data.items) setItems(data.items);
+    if (data.applications) setApplications(data.applications);
+    if (data.reminders) setReminders(data.reminders);
+    if (data.calendarEvents) setCalendarEvents(data.calendarEvents);
+    if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
+  };
+
   const addEvent = () => {
     if (!newEvent.title.trim()) return;
     setCalendarEvents([...calendarEvents, { ...newEvent, id: generateId() }]);
@@ -2590,6 +2927,8 @@ function LifeTracker() {
             <SettingsPage
               settings={settings}
               onUpdateSettings={updateSettings}
+              allData={getAllData()}
+              onRestoreData={restoreData}
               courses={courses}
               onImportSyllabus={importSyllabus}
             />
