@@ -6,14 +6,19 @@
   <title>Life Tracker - Personal Dashboard</title>
   <meta name="description" content="One Stop Life Tracker - Personal Dashboard for managing calendar, assignments, todos, job applications, and reminders">
 
+  <!-- Open Graph / Social -->
+  <meta property="og:title" content="Life Tracker - Personal Dashboard">
+  <meta property="og:description" content="Manage your calendar, assignments, todos, job applications, and reminders in one place">
+  <meta property="og:type" content="website">
+
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 
-  <!-- React & ReactDOM from CDN -->
+  <!-- React & ReactDOM from CDN (production builds) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- Babel for JSX transformation -->
+  <!-- Babel for JSX transformation (standalone for GitHub Pages) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
@@ -63,6 +68,45 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* PWA install prompt */
+    .install-prompt {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #121214;
+      border: 1px solid #2a2a2e;
+      border-radius: 12px;
+      padding: 16px 24px;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .install-prompt.show {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .install-prompt button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .install-btn {
+      background: #6366f1;
+      color: white;
+    }
+
+    .dismiss-btn {
+      background: #2a2a2e;
+      color: #a1a1aa;
+    }
   </style>
 </head>
 <body>
@@ -74,12 +118,26 @@
   </div>
 
   <!-- Main Application -->
-  <script type="text/babel" src="life-tracker.jsx"></script>
+  <script type="text/babel" data-type="module" src="./life-tracker.jsx"></script>
 
   <script type="text/babel">
     // Render the app
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<LifeTracker />);
+  </script>
+
+  <!-- Service Worker Registration for offline support (optional) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        // Only register if sw.js exists
+        fetch('./sw.js').then(response => {
+          if (response.ok) {
+            navigator.serviceWorker.register('./sw.js');
+          }
+        }).catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>
