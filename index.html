@@ -334,12 +334,186 @@
             color: #6b7280;
             margin-top: 4px;
         }
+
+        /* Birthday styles */
+        .birthday-reminder {
+            background: #fef3c7;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #f59e0b;
+            font-size: 14px;
+            color: #92400e;
+            margin-top: 12px;
+        }
+
+        .birthday-reminder strong {
+            color: #b45309;
+        }
+
+        .birthdays-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .birthdays-header {
+            background: #fef3c7;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #fde68a;
+        }
+
+        .birthdays-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #92400e;
+        }
+
+        .birthdays-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .add-birthday-btn {
+            padding: 8px 16px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .add-birthday-btn:hover {
+            background: #d97706;
+        }
+
+        .export-btn {
+            padding: 8px 16px;
+            background: #e5e7eb;
+            color: #374151;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .export-btn:hover {
+            background: #d1d5db;
+        }
+
+        .birthday-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .birthday-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            gap: 12px;
+        }
+
+        .birthday-item:last-child {
+            border-bottom: none;
+        }
+
+        .birthday-item.upcoming {
+            background: #fffbeb;
+        }
+
+        .birthday-icon {
+            width: 40px;
+            height: 40px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .birthday-info {
+            flex: 1;
+        }
+
+        .birthday-name {
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .birthday-date {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .birthday-countdown {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .birthday-countdown.today {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .birthday-countdown.soon {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .birthday-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .birthday-actions button {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .no-birthdays {
+            padding: 40px;
+            text-align: center;
+            color: #9ca3af;
+        }
+
+        .toggle-birthdays-btn {
+            padding: 8px 16px;
+            background: #fef3c7;
+            color: #92400e;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .toggle-birthdays-btn:hover {
+            background: #fde68a;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="greeting" id="greeting"></div>
         <div class="summary" id="summary"></div>
+        <div class="birthday-reminder" id="birthdayReminder" style="display: none;"></div>
     </div>
 
     <div class="controls">
@@ -353,9 +527,21 @@
             <button id="nextWeek">Next &rarr;</button>
         </div>
         <button class="add-btn" id="addTaskBtn">+ Add Task</button>
+        <button class="toggle-birthdays-btn" id="toggleBirthdaysBtn">Birthdays</button>
     </div>
 
     <div class="tasks-container" id="tasksContainer"></div>
+
+    <div class="birthdays-section" id="birthdaysSection" style="display: none;">
+        <div class="birthdays-header">
+            <h3>Birthday Reminders</h3>
+            <div class="birthdays-header-actions">
+                <button class="export-btn" id="exportBirthdaysBtn">Export CSV</button>
+                <button class="add-birthday-btn" id="addBirthdayBtn">+ Add Birthday</button>
+            </div>
+        </div>
+        <div class="birthday-list" id="birthdayList"></div>
+    </div>
 
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
@@ -390,6 +576,45 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="cancel-btn" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="save-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="birthdayModalOverlay">
+        <div class="modal">
+            <h2 id="birthdayModalTitle">Add Birthday</h2>
+            <form id="birthdayForm">
+                <input type="hidden" id="birthdayId">
+                <div class="form-group">
+                    <label for="birthdayName">Name</label>
+                    <input type="text" id="birthdayName" required>
+                </div>
+                <div class="form-group">
+                    <label for="birthdayMonth">Month</label>
+                    <select id="birthdayMonth" required>
+                        <option value="">Select month</option>
+                        <option value="January">January</option>
+                        <option value="February">February</option>
+                        <option value="March">March</option>
+                        <option value="April">April</option>
+                        <option value="May">May</option>
+                        <option value="June">June</option>
+                        <option value="July">July</option>
+                        <option value="August">August</option>
+                        <option value="September">September</option>
+                        <option value="October">October</option>
+                        <option value="November">November</option>
+                        <option value="December">December</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="birthdayDay">Day</label>
+                    <input type="number" id="birthdayDay" min="1" max="31" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" id="cancelBirthdayBtn">Cancel</button>
                     <button type="submit" class="save-btn">Save</button>
                 </div>
             </form>
@@ -448,20 +673,65 @@
             { subject: "Using Big Data to Develop Public Policy", task: "Final Paper", type: "Project", date: "2026-05-13", time: "TBD" }
         ];
 
+        // Birthday seed data from birthdays.csv
+        const birthdaySeedData = [
+            { name: "Mummy", month: "August", day: 31 },
+            { name: "Papa", month: "July", day: 20 },
+            { name: "Dadima", month: "September", day: 17 },
+            { name: "Pooja", month: "August", day: 19 },
+            { name: "Himag", month: "January", day: 23 },
+            { name: "Nadine", month: "October", day: 27 },
+            { name: "Lola", month: "March", day: 10 },
+            { name: "Madhav", month: "May", day: 14 },
+            { name: "Gaurav", month: "May", day: 11 },
+            { name: "Ghaniba", month: "September", day: 21 },
+            { name: "Rida", month: "August", day: 3 },
+            { name: "Mubasher", month: "July", day: 18 },
+            { name: "Akash", month: "August", day: 23 },
+            { name: "Pavan", month: "August", day: 15 },
+            { name: "Shanzey", month: "February", day: 29 },
+            { name: "Bence", month: "September", day: 10 },
+            { name: "Manas", month: "June", day: 12 },
+            { name: "Jheel", month: "August", day: 15 },
+            { name: "Manan", month: "September", day: 30 },
+            { name: "Shashank", month: "October", day: 19 },
+            { name: "John", month: "September", day: 10 },
+            { name: "Michael", month: "August", day: 30 },
+            { name: "Sabnis", month: "December", day: 20 },
+            { name: "Kamat", month: "July", day: 10 },
+            { name: "Ishani", month: "October", day: 8 },
+            { name: "Mitali", month: "January", day: 24 },
+            { name: "Ritu", month: "February", day: 11 },
+            { name: "Raghav", month: "April", day: 12 },
+            { name: "Poorvi", month: "January", day: 28 },
+            { name: "Pranati", month: "October", day: 21 },
+            { name: "Varun", month: "March", day: 5 },
+            { name: "Misbah", month: "August", day: 26 },
+            { name: "Zoe", month: "October", day: 24 },
+            { name: "Arshiya", month: "July", day: 14 },
+            { name: "Shazia", month: "March", day: 4 },
+            { name: "Kankon", month: "September", day: 26 },
+            { name: "Chanakya", month: "March", day: 7 }
+        ];
+
         // Semester start date (Week 1 begins)
         const SEMESTER_START = new Date('2026-01-20');
 
         // State
         let tasks = [];
+        let birthdays = [];
         let currentWeek = 1;
         let currentView = 'week';
+        let showBirthdays = false;
 
         // Initialize
         function init() {
             loadTasks();
+            loadBirthdays();
             updateGreeting();
             updateSummary();
             renderTasks();
+            renderBirthdays();
             setupEventListeners();
         }
 
@@ -484,6 +754,80 @@
         // Save tasks to localStorage
         function saveTasks() {
             localStorage.setItem('pranav_tasks', JSON.stringify(tasks));
+        }
+
+        // Load birthdays from localStorage or seed data
+        function loadBirthdays() {
+            const saved = localStorage.getItem('pranav_birthdays');
+            if (saved) {
+                birthdays = JSON.parse(saved);
+            } else {
+                // Initialize from seed data
+                birthdays = birthdaySeedData.map((item, index) => ({
+                    id: index + 1,
+                    ...item
+                }));
+                saveBirthdays();
+            }
+        }
+
+        // Save birthdays to localStorage
+        function saveBirthdays() {
+            localStorage.setItem('pranav_birthdays', JSON.stringify(birthdays));
+        }
+
+        // Get days until birthday (this year or next year)
+        function getDaysUntilBirthday(birthday) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            const monthIndex = monthNames.indexOf(birthday.month);
+
+            if (monthIndex === -1) return 999; // Invalid month
+
+            let birthdayThisYear = new Date(today.getFullYear(), monthIndex, birthday.day);
+            birthdayThisYear.setHours(0, 0, 0, 0);
+
+            // Handle Feb 29 for non-leap years
+            if (birthday.month === 'February' && birthday.day === 29) {
+                const year = today.getFullYear();
+                const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+                if (!isLeapYear) {
+                    birthdayThisYear = new Date(year, 1, 28); // Use Feb 28
+                }
+            }
+
+            let daysUntil = Math.ceil((birthdayThisYear - today) / (1000 * 60 * 60 * 24));
+
+            if (daysUntil < 0) {
+                // Birthday has passed this year, calculate for next year
+                let birthdayNextYear = new Date(today.getFullYear() + 1, monthIndex, birthday.day);
+                birthdayNextYear.setHours(0, 0, 0, 0);
+
+                // Handle Feb 29 for non-leap years
+                if (birthday.month === 'February' && birthday.day === 29) {
+                    const nextYear = today.getFullYear() + 1;
+                    const isLeapYear = (nextYear % 4 === 0 && nextYear % 100 !== 0) || (nextYear % 400 === 0);
+                    if (!isLeapYear) {
+                        birthdayNextYear = new Date(nextYear, 1, 28);
+                    }
+                }
+
+                daysUntil = Math.ceil((birthdayNextYear - today) / (1000 * 60 * 60 * 24));
+            }
+
+            return daysUntil;
+        }
+
+        // Get upcoming birthdays within specified days
+        function getUpcomingBirthdays(withinDays = 7) {
+            return birthdays
+                .filter(b => b.month && b.day) // Only valid entries
+                .map(b => ({ ...b, daysUntil: getDaysUntilBirthday(b) }))
+                .filter(b => b.daysUntil <= withinDays)
+                .sort((a, b) => a.daysUntil - b.daysUntil);
         }
 
         // Get current week number (1-indexed)
@@ -586,6 +930,32 @@
             }
 
             document.getElementById('summary').innerHTML = summaryParts.join(' ');
+
+            // Birthday reminders (7 days ahead)
+            const upcomingBirthdays = getUpcomingBirthdays(7);
+            const birthdayReminderEl = document.getElementById('birthdayReminder');
+
+            if (upcomingBirthdays.length > 0) {
+                let birthdayParts = [];
+                upcomingBirthdays.forEach(b => {
+                    if (b.daysUntil === 0) {
+                        birthdayParts.push(`<strong>${b.name}'s birthday is TODAY!</strong>`);
+                    } else if (b.daysUntil === 1) {
+                        birthdayParts.push(`<strong>${b.name}'s birthday is tomorrow!</strong> Time to wish/get a gift.`);
+                    } else {
+                        birthdayParts.push(`<strong>${b.name}'s birthday</strong> is in ${b.daysUntil} days (${b.month} ${b.day}). Consider getting a gift!`);
+                    }
+                });
+
+                if (birthdayReminderEl) {
+                    birthdayReminderEl.innerHTML = birthdayParts.join('<br>');
+                    birthdayReminderEl.style.display = 'block';
+                }
+            } else {
+                if (birthdayReminderEl) {
+                    birthdayReminderEl.style.display = 'none';
+                }
+            }
         }
 
         // Render tasks
@@ -732,6 +1102,28 @@
             // Task actions (delegated)
             document.getElementById('tasksContainer').addEventListener('click', handleTaskAction);
             document.getElementById('tasksContainer').addEventListener('change', handleTaskToggle);
+
+            // Birthday toggle button
+            document.getElementById('toggleBirthdaysBtn').addEventListener('click', () => {
+                showBirthdays = !showBirthdays;
+                const birthdaysSection = document.getElementById('birthdaysSection');
+                birthdaysSection.style.display = showBirthdays ? 'block' : 'none';
+                document.getElementById('toggleBirthdaysBtn').textContent = showBirthdays ? 'Hide Birthdays' : 'Birthdays';
+            });
+
+            // Birthday modal
+            document.getElementById('addBirthdayBtn').addEventListener('click', openAddBirthdayModal);
+            document.getElementById('cancelBirthdayBtn').addEventListener('click', closeBirthdayModal);
+            document.getElementById('birthdayModalOverlay').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeBirthdayModal();
+            });
+            document.getElementById('birthdayForm').addEventListener('submit', handleBirthdayFormSubmit);
+
+            // Birthday actions (delegated)
+            document.getElementById('birthdayList').addEventListener('click', handleBirthdayAction);
+
+            // Export birthdays
+            document.getElementById('exportBirthdaysBtn').addEventListener('click', exportBirthdaysCSV);
         }
 
         // Open add modal
@@ -824,6 +1216,145 @@
                 updateSummary();
                 renderTasks();
             }
+        }
+
+        // Render birthdays list
+        function renderBirthdays() {
+            const container = document.getElementById('birthdayList');
+
+            if (birthdays.length === 0) {
+                container.innerHTML = '<div class="no-birthdays">No birthdays saved yet</div>';
+                return;
+            }
+
+            // Sort by days until birthday
+            const sortedBirthdays = birthdays
+                .filter(b => b.month && b.day)
+                .map(b => ({ ...b, daysUntil: getDaysUntilBirthday(b) }))
+                .sort((a, b) => a.daysUntil - b.daysUntil);
+
+            const html = sortedBirthdays.map(b => {
+                let countdownClass = '';
+                let countdownText = '';
+
+                if (b.daysUntil === 0) {
+                    countdownClass = 'today';
+                    countdownText = 'Today!';
+                } else if (b.daysUntil <= 7) {
+                    countdownClass = 'soon';
+                    countdownText = `In ${b.daysUntil} day${b.daysUntil > 1 ? 's' : ''}`;
+                } else {
+                    countdownText = `In ${b.daysUntil} days`;
+                }
+
+                return `
+                    <div class="birthday-item ${b.daysUntil <= 7 ? 'upcoming' : ''}" data-id="${b.id}">
+                        <div class="birthday-icon">🎂</div>
+                        <div class="birthday-info">
+                            <div class="birthday-name">${b.name}</div>
+                            <div class="birthday-date">${b.month} ${b.day}</div>
+                        </div>
+                        <span class="birthday-countdown ${countdownClass}">${countdownText}</span>
+                        <div class="birthday-actions">
+                            <button class="edit-btn">Edit</button>
+                            <button class="delete-btn">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        // Open add birthday modal
+        function openAddBirthdayModal() {
+            document.getElementById('birthdayModalTitle').textContent = 'Add Birthday';
+            document.getElementById('birthdayForm').reset();
+            document.getElementById('birthdayId').value = '';
+            document.getElementById('birthdayModalOverlay').classList.add('active');
+        }
+
+        // Open edit birthday modal
+        function openEditBirthdayModal(birthday) {
+            document.getElementById('birthdayModalTitle').textContent = 'Edit Birthday';
+            document.getElementById('birthdayId').value = birthday.id;
+            document.getElementById('birthdayName').value = birthday.name;
+            document.getElementById('birthdayMonth').value = birthday.month;
+            document.getElementById('birthdayDay').value = birthday.day;
+            document.getElementById('birthdayModalOverlay').classList.add('active');
+        }
+
+        // Close birthday modal
+        function closeBirthdayModal() {
+            document.getElementById('birthdayModalOverlay').classList.remove('active');
+        }
+
+        // Handle birthday form submit
+        function handleBirthdayFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('birthdayId').value;
+            const birthdayData = {
+                name: document.getElementById('birthdayName').value,
+                month: document.getElementById('birthdayMonth').value,
+                day: parseInt(document.getElementById('birthdayDay').value)
+            };
+
+            if (id) {
+                // Edit existing
+                const index = birthdays.findIndex(b => b.id === parseInt(id));
+                if (index !== -1) {
+                    birthdays[index] = { ...birthdays[index], ...birthdayData };
+                }
+            } else {
+                // Add new
+                const newId = Math.max(0, ...birthdays.map(b => b.id)) + 1;
+                birthdays.push({ id: newId, ...birthdayData });
+            }
+
+            saveBirthdays();
+            updateSummary();
+            renderBirthdays();
+            closeBirthdayModal();
+        }
+
+        // Handle birthday actions (edit/delete)
+        function handleBirthdayAction(e) {
+            const birthdayItem = e.target.closest('.birthday-item');
+            if (!birthdayItem) return;
+
+            const id = parseInt(birthdayItem.dataset.id);
+            const birthday = birthdays.find(b => b.id === id);
+
+            if (e.target.classList.contains('edit-btn')) {
+                openEditBirthdayModal(birthday);
+            } else if (e.target.classList.contains('delete-btn')) {
+                if (confirm(`Delete ${birthday.name}'s birthday?`)) {
+                    birthdays = birthdays.filter(b => b.id !== id);
+                    saveBirthdays();
+                    updateSummary();
+                    renderBirthdays();
+                }
+            }
+        }
+
+        // Export birthdays to CSV
+        function exportBirthdaysCSV() {
+            const csvContent = 'Name,Birthday\n' +
+                birthdays
+                    .filter(b => b.name)
+                    .map(b => `${b.name},${b.month || ''} ${b.day || ''}`.trim())
+                    .join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'birthdays.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Start the app
