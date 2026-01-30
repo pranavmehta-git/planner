@@ -784,23 +784,6 @@
     <script>
         // Initial seed data from assignments.csv
         const seedData = [
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 1", type: "Assignment", date: "2026-01-26", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 2", type: "Assignment", date: "2026-02-02", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Problem Set 1", type: "Assignment", date: "2026-02-04", time: "10:00 AM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 3", type: "Assignment", date: "2026-02-09", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 4", type: "Assignment", date: "2026-02-16", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 5", type: "Assignment", date: "2026-02-22", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 6", type: "Assignment", date: "2026-03-02", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Problem Set 2", type: "Assignment", date: "2026-03-04", time: "10:00 AM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 7", type: "Assignment", date: "2026-03-09", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 8", type: "Assignment", date: "2026-03-23", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Paper Topics", type: "Deliverable", date: "2026-04-01", time: "TBD" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 9", type: "Assignment", date: "2026-04-06", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 10", type: "Assignment", date: "2026-04-13", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Reader Response 11", type: "Assignment", date: "2026-04-20", time: "11:59 PM" },
-            { subject: "Economic Measurement of Discrimination", task: "Problem Set 3", type: "Assignment", date: "2026-04-22", time: "10:00 AM" },
-            { subject: "Economic Measurement of Discrimination", task: "Final Presentation", type: "Presentation", date: "2026-04-29", time: "10:00 AM" },
-            { subject: "Economic Measurement of Discrimination", task: "Final Paper", type: "Project", date: "2026-05-08", time: "TBD" },
             { subject: "International Trade", task: "Problem Set 1 (Chapter 3)", type: "Assignment", date: "2026-02-05", time: "TBD" },
             { subject: "International Trade", task: "Problem Set 2 (Chapter 5)", type: "Assignment", date: "2026-02-19", time: "TBD" },
             { subject: "International Trade", task: "Midterm Exam", type: "Exam", date: "2026-03-05", time: "TBD" },
@@ -1143,6 +1126,47 @@
             if (headStartTasks.length > 0 && dueToday.length === 0) {
                 const headStartName = headStartTasks[0].task;
                 summaryParts.push(`<em>You should get a head start on ${headStartName}!</em>`);
+            }
+
+            // Weekend summary: show upcoming week tasks on Saturday (6) or Sunday (0)
+            const dayOfWeek = today.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                // Calculate start of next week (Monday)
+                const daysUntilMonday = dayOfWeek === 0 ? 1 : 2;
+                const nextMonday = new Date(today);
+                nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
+
+                // End of next week (Sunday)
+                const nextSunday = new Date(nextMonday);
+                nextSunday.setDate(nextSunday.getDate() + 6);
+
+                const nextWeekTasks = incompleteTasks.filter(t => {
+                    const d = new Date(t.date);
+                    d.setHours(0, 0, 0, 0);
+                    return d >= nextMonday && d <= nextSunday;
+                });
+
+                if (nextWeekTasks.length > 0) {
+                    // Group tasks by subject
+                    const tasksBySubject = {};
+                    nextWeekTasks.forEach(t => {
+                        if (!tasksBySubject[t.subject]) {
+                            tasksBySubject[t.subject] = [];
+                        }
+                        tasksBySubject[t.subject].push(t);
+                    });
+
+                    let weekPreview = '<br><br><strong>📋 Week ahead preview:</strong><br>';
+                    for (const [subject, subjectTasks] of Object.entries(tasksBySubject)) {
+                        const taskNames = subjectTasks.map(t => {
+                            const dueDate = new Date(t.date);
+                            const dayName = dueDate.toLocaleDateString('en-US', { weekday: 'short' });
+                            return `${t.task} (${dayName})`;
+                        }).join(', ');
+                        weekPreview += `• <em>${subject}</em>: ${taskNames}<br>`;
+                    }
+                    summaryParts.push(weekPreview);
+                }
             }
 
             if (summaryParts.length === 0) {
