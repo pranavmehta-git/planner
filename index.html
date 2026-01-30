@@ -875,6 +875,8 @@
         function init() {
             loadTasks();
             loadBirthdays();
+            // Set current week based on today's date
+            currentWeek = getWeekNumber(new Date());
             updateGreeting();
             updateSummary();
             renderTasks();
